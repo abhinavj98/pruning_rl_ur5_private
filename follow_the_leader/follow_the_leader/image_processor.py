@@ -4,7 +4,7 @@ import numpy as np
 from sensor_msgs.msg import Image, CameraInfo
 from geometry_msgs.msg import Vector3
 from follow_the_leader_msgs.msg import ImageMaskPair, StateTransition
-from follow_the_leader.networks.flowgan import FlowGAN
+
 from cv_bridge import CvBridge
 from follow_the_leader.utils.ros_utils import TFNode, process_list_as_dict
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
@@ -24,6 +24,7 @@ class ImageProcessorNode(TFNode):
 
         # ROS2 params
         self.movement_threshold = self.declare_parameter("movement_threshold", 0.0075)
+        self.segmentation_model_name = self.declare_parameter("segmentation_model_name", "YOLO")
         self.base_frame = self.declare_parameter("base_frame", "base_link")
         self.camera_topic_name = self.declare_parameter("camera_topic_name", Parameter.Type.STRING)
 
@@ -59,14 +60,22 @@ class ImageProcessorNode(TFNode):
                     size = (self.camera.width, self.camera.height)
                 else:
                     size = force_size
-                self.image_processor = FlowGAN(
-                    size,
-                    size,
-                    use_flow=True,
-                    gan_name="synthetic_flow_pix2pix",
-                    gan_input_channels=6,
-                    gan_output_channels=1,
-                )
+                segmentation_model_name = self.segmentation_model_name.get_parameter_value().string_value
+                if segmentation_model_name == "YOLO":
+                    from follow_the_leader.networks.yolov8 import YoloInference
+                    self.image_processor = YoloInference(input_size=size, output_size=size)
+                elif segmentation_model_name == "FlowGAN":
+                    from follow_the_leader.networks.flowgan import FlowGAN
+                    self.image_processor = FlowGAN(
+                        size,
+                        size,
+                        use_flow=True,
+                        gan_name="synthetic_flow_pix2pix",
+                        gan_input_channels=6,
+                        gan_output_channels=1,
+                    )
+                else:
+                    raise ValueError("Unknown segmentation model {}".format(segmentation_model_name))
         return
 
     def _handle_cam_info(self, msg: CameraInfo):

@@ -1,8 +1,13 @@
 from ultralytics import YOLO
-import numpy as np
-from ultralytics.utils.ops import scale_image
+import cv2
 import matplotlib.pyplot as plt
+import torch
 
+
+from enum import Enum
+class TreeLabel(Enum):
+    TRUNK = 0
+    SIDE_BRANCH = 1
 class YoloInference:
     def __init__(self, input_size=(640, 448), output_size=(640, 448),
                     model_path='yolov5s.pt'):
@@ -12,61 +17,31 @@ class YoloInference:
         self.model = YOLO(model_path)  # load a pretrained YOLOv8 segmentation model
         print("Model weights loaded")
 
-    # def preprocess(self, image):
+    def preprocess(self, image):
+        """Preprocess image to yolov8 size"""
+        pass
 
-    def predict(self, image):
+    def process(self, image):
         """predicting image
         """
-        from PIL import Image
-        import torch
-        result = self.model(source=image)[0]
-        # for result in results:
+        #TODO: peprocess and post process mask size
+        result = self.model(source=image, retina_masks=True)[0]
         masks = result.masks.data
         cls = result.boxes.data #bbox, (N, 6)
-        cls = cls[:, 5] #Class valye
-        print(cls)
-        people_indices = torch.where(cls == 0)
-        print('people_indices', people_indices)
+        cls = cls[:, 5] #Class value
+        trunk_indices = torch.where(cls == 0)
         # use these indices to extract the relevant masks
-        people_masks = masks[people_indices]
-        print('people_masks', people_masks.shape)
+        trunk_masks = masks[trunk_indices]
         # scale for visualizing results
-        people_mask = torch.any(people_masks, dim=0).int() * 255
-        print(people_mask.shape)
+        trunk_mask = torch.any(trunk_masks, dim=0).int() * 255
 
-        cv2.imwrite(str('/Users/abhinav/Desktop/gradstuff/research/pruning_control_ur5/follow_the_leader/follow_the_leader/networks/abc.jpg'), people_mask.cpu().numpy())
-        # masks = np.moveaxis(masks, 0, -1)
-        # print(masks)
-        # masks = scale_image(masks.shape[:2], masks, result.masks.orig_shape)
-        # masks = np.array(masks, dtype=bool)
-        # cls = result.boxes.data.cpu().numpy()  # cls, (N, 1)
-
-        # xy = np.array(xy)
-        # #move axis
-        # # xy = np.moveaxis(xy, 0, -1)
-        # # image = Image.fromarray(image)
-        # print(xy.shape, image.shape)
-        # for x, y in xy:
-        #     image[x, y] =
-        # image[xy] = 255
-        im_array = result.plot(font_size=7, line_width=3)
-        # im_array = r.plot()  # plot a BGR numpy array of predictions
-        # im = Image.fromarray(im_array[..., ::-1])  # RGB PIL image
-        # im.show()  # show ima
-        # masks = result.masks.masks.cpu().numpy()  # masks, (N, H, W)
-        # masks = np.moveaxis(masks, 0, -1)  # masks, (H, W, N)
-        # masks = scale_image(masks.shape[:2], masks, result.masks.orig_shape)
-        # masks = np.array(masks, dtype=bool)
-        # cls = result.boxes.cls.cpu().numpy()  # cls, (N, 1)
-        # probs = result.boxes.conf.cpu().numpy()  # confidence score, (N, 1)
-
-        return
+        return trunk_mask
 
 if __name__ == "__main__":
-    model_path = 'best.pt'
+    model_path = '/home/abhinav/Desktop/weights/best.pt'
     yolo = YoloInference(model_path=model_path)
     #load image using cv2
-    import cv2
-    # image = cv2.imread('/Users/abhinav/Downloads/IMG_7794.JPG')
-    image = cv2.imread('bus.jpg')
-    yolo.predict(image)
+    image = cv2.imread('/home/abhinav/Downloads/0300_jpg.rf.3472cc9e93c32d8c0d507d87d5efd296.jpg')
+    mask = yolo.process(image).cpu().numpy()
+    plt.imshow(mask, cmap='gray')
+    plt.show()
