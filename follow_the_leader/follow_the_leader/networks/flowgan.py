@@ -38,7 +38,6 @@ class FlowGAN:
         self.gan_resize = None
         if gan_name is not None:
             from follow_the_leader.networks.pix2pix import Pix2PixGAN
-
             self.gan = Pix2PixGAN(
                 gan_name,
                 input_nc=gan_input_channels,
