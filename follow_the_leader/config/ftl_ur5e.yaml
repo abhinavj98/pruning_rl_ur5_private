@@ -19,11 +19,11 @@ ftl_controller_3d:
 #    movement_threshold: 0.0009375   # How much distance moved is required between images
 #    min_points: 4                   # How many points should be onscreen to produce a 3D estimate?
 #
-#image_processor_node:
-#  ros__parameters:
-#    base_frame: 'base_link'
-#    movement_threshold: 0.0075      # How much distance is required between images to produce a mask
-#
+image_processor_node:
+  ros__parameters:
+    base_frame: 'base_link'
+    movement_threshold: 0.0075      # How much distance is required between images to produce a mask
+    segmentation_model_name: 'YOLO'
 #curve_3d_model_node:
 #  ros__parameters:
 #    base_frame: 'base_link'

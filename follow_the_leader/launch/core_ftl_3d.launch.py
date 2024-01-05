@@ -83,7 +83,7 @@ def generate_launch_description():
             params_arg,
             camera_params_arg,
             state_manager_node,
-            #image_processor_node,
+            image_processor_node,
             #point_tracker_node,
             #modeling_node,
             #controller_node,

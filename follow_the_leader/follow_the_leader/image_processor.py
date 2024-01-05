@@ -26,7 +26,7 @@ class ImageProcessorNode(TFNode):
         self.movement_threshold = self.declare_parameter("movement_threshold", 0.0075)
         self.segmentation_model_name = self.declare_parameter("segmentation_model_name", "YOLO")
         self.base_frame = self.declare_parameter("base_frame", "base_link")
-        self.camera_topic_name = self.declare_parameter("camera_topic_name", Parameter.Type.STRING)
+        self.camera_topic_name = self.declare_parameter("camera_topic_name", '/camera/color/image_raw') #TODO: Change to Parameter.Type.STRING
 
         # State variables
         self.image_processor = None
@@ -51,6 +51,9 @@ class ImageProcessorNode(TFNode):
         self.transition_sub = self.create_subscription(
             StateTransition, "state_transition", self.handle_state_transition, 1, callback_group=self.cb_reentrant
         )
+        # self.switch_controller_srv = self.create_service(
+        #     Trigger, "await_resource_ready", self.await_resource_ready, callback_group=self.cb
+        # )
         return
 
     def load_image_processor(self, force_size=None):
@@ -61,8 +64,10 @@ class ImageProcessorNode(TFNode):
                 else:
                     size = force_size
                 segmentation_model_name = self.segmentation_model_name.get_parameter_value().string_value
+                print("Loading segmentation model {}".format(segmentation_model_name))
                 if segmentation_model_name == "YOLO":
                     from follow_the_leader.networks.yolov8 import YoloInference
+                    print("Loading YOLO model")
                     self.image_processor = YoloInference(input_size=size, output_size=size)
                 elif segmentation_model_name == "FlowGAN":
                     from follow_the_leader.networks.flowgan import FlowGAN
@@ -107,38 +112,45 @@ class ImageProcessorNode(TFNode):
         return
 
     def image_callback(self, msg: Image):
-        self.last_image = msg
+        # self.last_image = msg
         if self.image_processor is None:
             return
-
         vec = Vector3()
-        if self.movement_threshold.value:
-            tf_mat = self.lookup_transform(
-                self.base_frame.value, self.camera.tf_frame, rclpy.time.Time(), as_matrix=True
-            )
-            pos = tf_mat[:3, 3]
-            if self.last_pose is None:
-                self.last_pose = tf_mat
-            else:
-                # If the camera has rotated too much, we assume we get bad optical flows
-                rotation = Rotation.from_matrix(self.last_pose[:3, :3].T @ tf_mat[:3, :3]).as_euler("XYZ")
-                if np.linalg.norm(rotation) > np.radians(0.5):
+        segmentation_model_name = self.segmentation_model_name.get_parameter_value().string_value
+        if segmentation_model_name == "FlowGAN":
+            """Need to compute the optical flow between the current and previous image for flowgan
+             This checks if the optical flow is nice"""
+            if self.movement_threshold.value:
+                tf_mat = self.lookup_transform(
+                    self.base_frame.value, self.camera.tf_frame, rclpy.time.Time(), as_matrix=True
+                )
+                pos = tf_mat[:3, 3]
+                if self.last_pose is None:
                     self.last_pose = tf_mat
-                    self.last_skipped = True
-                    return
+                else:
+                    # If the camera has rotated too much, we assume we get bad optical flows
+                    rotation = Rotation.from_matrix(self.last_pose[:3, :3].T @ tf_mat[:3, :3]).as_euler("XYZ")
+                    if np.linalg.norm(rotation) > np.radians(0.5):
+                        self.last_pose = tf_mat
+                        self.last_skipped = True
+                        return
 
-                last_pos = self.last_pose[:3, 3]
-                diff = pos - last_pos
-                if np.linalg.norm(diff) < self.movement_threshold.value:
-                    return
+                    last_pos = self.last_pose[:3, 3]
+                    diff = pos - last_pos
+                    if np.linalg.norm(diff) < self.movement_threshold.value:
+                        return
 
-                movement = np.linalg.inv(tf_mat[:3, :3]) @ diff
-                movement /= np.linalg.norm(movement)
-                vec = Vector3(x=movement[0], y=movement[1], z=movement[2])
-                self.last_pose = tf_mat
+                    movement = np.linalg.inv(tf_mat[:3, :3]) @ diff
+                    movement /= np.linalg.norm(movement)
+                    vec = Vector3(x=movement[0], y=movement[1], z=movement[2])
+                    self.last_pose = tf_mat
 
         img = bridge.imgmsg_to_cv2(msg, desired_encoding="rgb8")
-        mask = self.image_processor.process(img).mean(axis=2).astype(np.uint8)
+        if segmentation_model_name == "FlowGAN":
+            mask = self.image_processor.process(img).mean(axis=2).astype(np.uint8)
+
+        if segmentation_model_name == "YOLO":
+            mask = self.image_processor.process(img).astype(np.uint8)#.mean(axis=2).astype(np.uint8)
         if self.just_activated:
             self.just_activated = False
             return
@@ -146,7 +158,6 @@ class ImageProcessorNode(TFNode):
         if self.last_skipped:
             self.last_skipped = False
             return
-
         mask_msg = bridge.cv2_to_imgmsg(mask, encoding="mono8")
         mask_msg.header.stamp = msg.header.stamp
         image_mask_pair = ImageMaskPair(rgb=msg, mask=mask_msg, image_frame_offset=vec)
@@ -155,6 +166,10 @@ class ImageProcessorNode(TFNode):
         self.image_mask_pub.publish(image_mask_pair)
         return
 
+    def switch_segmentation_model_callback(self, segmentation_model_name):
+        self.segmentation_model_name.set_parameter_value(Parameter.Type.STRING, segmentation_model_name)
+        self.load_image_processor()
+        return
 
 def main(args=None):
     rclpy.init(args=args)

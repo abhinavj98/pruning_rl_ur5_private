@@ -1,3 +1,4 @@
+import numpy as np
 from ultralytics import YOLO
 import cv2
 import matplotlib.pyplot as plt
@@ -10,7 +11,7 @@ class TreeLabel(Enum):
     SIDE_BRANCH = 1
 class YoloInference:
     def __init__(self, input_size=(640, 448), output_size=(640, 448),
-                    model_path='yolov5s.pt'):
+                    model_path = '/home/abhinav/Desktop/weights/best.pt'):
         self.input_size = input_size
         self.output_size = output_size
 
@@ -21,11 +22,17 @@ class YoloInference:
         """Preprocess image to yolov8 size"""
         pass
 
+    def reset(self):
+        """reset model"""
+        pass
+
     def process(self, image):
         """predicting image
         """
         #TODO: peprocess and post process mask size
         result = self.model(source=image, retina_masks=True)[0]
+        if result.masks is None:
+            return np.zeros(image.shape[:2], dtype=np.uint8)
         masks = result.masks.data
         cls = result.boxes.data #bbox, (N, 6)
         cls = cls[:, 5] #Class value
@@ -35,7 +42,7 @@ class YoloInference:
         # scale for visualizing results
         trunk_mask = torch.any(trunk_masks, dim=0).int() * 255
 
-        return trunk_mask
+        return trunk_mask.cpu().numpy()
 
 if __name__ == "__main__":
     model_path = '/home/abhinav/Desktop/weights/best.pt'

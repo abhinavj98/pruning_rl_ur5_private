@@ -41,19 +41,19 @@ def generate_launch_description():
         description="Path to the YAML file containing camera parameters",
     )
 
-    # realsense_launch = IncludeLaunchDescription(
-    #     AnyLaunchDescriptionSource(
-    #         os.path.join(get_package_share_directory("realsense2_camera"), "launch/rs_launch.py")
-    #     ),
-    #     launch_arguments=[
-    #         ("enable_depth", "false"),
-    #         ("pointcloud.enable", "false"),
-    #         ("rgb_camera.profile", "424x240x30"),
-    #         # ("rgb_camera.profile", "640x480x30"),
-    #         ("depth_module.profile", "424x240x30"),
-    #     ],
-    #     condition=UnlessCondition(use_sim),  # TODO: add unless condition for other camera makers
-    # )
+    realsense_launch = IncludeLaunchDescription(
+        AnyLaunchDescriptionSource(
+            os.path.join(get_package_share_directory("realsense2_camera"), "launch/rs_launch.py")
+        ),
+        launch_arguments=[
+            ("enable_depth", "false"),
+            ("pointcloud.enable", "false"),
+            ("rgb_camera.profile", "424x240x30"),
+            # ("rgb_camera.profile", "640x480x30"),
+            ("depth_module.profile", "424x240x30"),
+        ],
+        condition=UnlessCondition(use_sim),  # TODO: add unless condition for other camera makers
+    )
 
     # ==============
     # Simulation
@@ -140,11 +140,11 @@ def generate_launch_description():
             use_sim_arg,
             load_core_arg,
             #launch_blender_arg,
-            #camera_params_arg,
+            camera_params_arg,
             ur_launch,
             #joy_node,
             #io_node,
-            #realsense_launch,
+            realsense_launch,
             core_launch,
             #blender_node,
             # ros_bag_execute
