@@ -1,0 +1,8 @@
+[0.000000] (-) TimerEvent: {}
+[0.000395] (follow_the_leader) JobQueued: {'identifier': 'follow_the_leader', 'dependencies': OrderedDict()}
+[0.000542] (follow_the_leader) JobStarted: {'identifier': 'follow_the_leader'}
+[0.099870] (-) TimerEvent: {}
+[0.200271] (-) TimerEvent: {}
+[0.300536] (-) TimerEvent: {}
+[0.358821] (follow_the_leader) JobEnded: {'identifier': 'follow_the_leader', 'rc': 0}
+[0.359751] (-) EventReactorShutdown: {}

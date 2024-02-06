@@ -77,10 +77,13 @@ class IOManager(Node):
         super().__init__("io_manager")
 
         self.service_cb = ReentrantCallbackGroup()
+        self.sub_node = rclpy.create_node('sub_node_io')
         self.state_publisher = self.create_publisher(States, "state_announcement", 1)
         self.joint_pub = self.create_publisher(JointState, "/move_joints", 1)
         self.action_pub = self.create_publisher(Int16, "/joy_action", 1)
-        self.reset_tree_srv = self.create_client(Trigger, "/initialize_tree_spindle", callback_group=self.service_cb)
+        self.reset_controller_cli = self.sub_node.create_client(Trigger, "reset_controller_srv", callback_group=self.service_cb)
+        while not self.reset_controller_cli.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('service not available, waiting again...')
 
         """
         xbox_controller = {
@@ -113,6 +116,7 @@ class IOManager(Node):
         self.buttons = {
             0: Button(off_state=False, switch_on_callback=self.send_start),
             1: Button(off_state=False, switch_on_callback=self.send_stop),
+            2: Button(off_state=False, switch_on_callback=self.send_reset),  # [x]
             5: Button(off_state=False, switch_on_callback=partial(self.send_joy_action, 3)),
             # 10: Button(off_state=False, switch_on_callback=self.reset_simulated_tree),
             4: Button(switch_on_callback=partial(self.send_joy_action, 5)),  # [o]
@@ -163,22 +167,38 @@ class IOManager(Node):
         return
 
     def send_start(self):
-        self.state_publisher.publish(States(state=States.LEADER_SCAN))
+        self.state_publisher.publish(States(state=States.VISUAL_SERVOING))
         print("Sent start request!")
         return
 
     def send_stop(self):
         self.state_publisher.publish(States(state=States.IDLE))
         print("Sent stop request!")
+
         return
 
-    def reset_simulated_tree(self):
-        if self.reset_tree_srv.wait_for_service(timeout_sec=0.5):
-            self.reset_tree_srv.call_async(Trigger.Request())
-            print("Reset tree!")
+    def send_reset(self):
+
+        req = Trigger.Request()
+        future = self.reset_controller_cli.call_async(req)
+        rclpy.spin_until_future_complete(self.sub_node, future)
+
+        if future.result() is not None:
+            response = future.result()
+            print('Service response:', response.message)
         else:
-            print("Reset tree service is not available")
+            print('Service call failed!')
+        print("Sent reset request!")
         return
+        #call a service
+    #
+    # def reset_simulated_tree(self):
+    #     if self.reset_tree_srv.wait_for_service(timeout_sec=0.5):
+    #         self.reset_tree_srv.call_async(Trigger.Request())
+    #         print("Reset tree!")
+    #     else:
+    #         print("Reset tree service is not available")
+    #     return
 
     def send_joints_home(self):
         print("SENDING JOINTS HOME!")

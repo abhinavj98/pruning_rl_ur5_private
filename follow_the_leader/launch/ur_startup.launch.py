@@ -51,7 +51,7 @@ def generate_launch_description():
 
     ur_moveit_launch = IncludeLaunchDescription(
         AnyLaunchDescriptionSource(
-            os.path.join(get_package_share_directory("ur_moveit_config"), "launch/ur_moveit.launch.py")
+            os.path.join(get_package_share_directory("follow_the_leader"), "ur_moveit.launch.py")
         ),
         launch_arguments=[
             ("ur_type", ur_type),
@@ -60,33 +60,6 @@ def generate_launch_description():
         ],
     )
 
-    tf_node_mount = Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        arguments="0 -0.05 0.007 0 0 0 1 tool0 camera_mount_center".split(),
-        condition=UnlessCondition(use_fake_hardware),
-    )
-
-    tf_node_mount_to_cam = Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        arguments="-0.009 0 0.0193 0.5 -0.5 0.5 0.5 camera_mount_center camera_link".split(),  # Z is camera thickness (23mm) minus glass (3.7mm)
-        condition=UnlessCondition(use_fake_hardware),
-    )
-
-    tf_node_b = Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        arguments="0.0 0 0.0 0.5 -0.5 0.5 0.5 tool0 camera_link".split(),
-        condition=IfCondition(use_fake_hardware),
-    )
-
-    tf_node_c = Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        arguments="0 0 0 0.5 -0.5 0.5 -0.5 camera_link camera_color_optical_frame".split(),
-        condition=IfCondition(use_fake_hardware),
-    )
 
     return LaunchDescription(
         [
@@ -96,9 +69,12 @@ def generate_launch_description():
             set_joint_controller,
             ur_base_launch,
             ur_moveit_launch,
-            tf_node_mount,
-            tf_node_mount_to_cam,
-            tf_node_b,
-            tf_node_c,
+            # tf_node_world_sim,
+            # tf_node_endpoint,
+            #
+            # tf_node_mount,
+            # tf_node_mount_to_cam,
+            # tf_node_b,
+            # tf_node_c,
         ]
     )

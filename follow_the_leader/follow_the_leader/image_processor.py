@@ -7,6 +7,7 @@ from follow_the_leader_msgs.msg import ImageMaskPair, StateTransition
 
 from cv_bridge import CvBridge
 from follow_the_leader.utils.ros_utils import TFNode, process_list_as_dict
+from follow_the_leader_msgs.srv import ChangeSegmentationModel
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.parameter import Parameter
@@ -39,7 +40,7 @@ class ImageProcessorNode(TFNode):
         self.lock = Lock()
         self.cb = MutuallyExclusiveCallbackGroup()
         self.cb_reentrant = ReentrantCallbackGroup()
-        self.pub = self.create_publisher(Image, "image_mask", 10)
+        self.mask_pub = self.create_publisher(Image, "image_mask", 10)
         self.image_mask_pub = self.create_publisher(ImageMaskPair, "image_mask_pair", 10)
         self.sub = self.create_subscription(
             Image,
@@ -51,9 +52,9 @@ class ImageProcessorNode(TFNode):
         self.transition_sub = self.create_subscription(
             StateTransition, "state_transition", self.handle_state_transition, 1, callback_group=self.cb_reentrant
         )
-        # self.switch_controller_srv = self.create_service(
-        #     Trigger, "await_resource_ready", self.await_resource_ready, callback_group=self.cb
-        # )
+        self.switch_segmentation_model_srv = self.create_service(
+            ChangeSegmentationModel, "change_segmentation_model", self.switch_segmentation_model_callback, callback_group=self.cb
+        )
         return
 
     def load_image_processor(self, force_size=None):
@@ -162,14 +163,21 @@ class ImageProcessorNode(TFNode):
         mask_msg.header.stamp = msg.header.stamp
         image_mask_pair = ImageMaskPair(rgb=msg, mask=mask_msg, image_frame_offset=vec)
 
-        self.pub.publish(mask_msg)
+        self.mask_pub.publish(mask_msg)
         self.image_mask_pub.publish(image_mask_pair)
         return
 
-    def switch_segmentation_model_callback(self, segmentation_model_name):
-        self.segmentation_model_name.set_parameter_value(Parameter.Type.STRING, segmentation_model_name)
-        self.load_image_processor()
-        return
+    def switch_segmentation_model_callback(self, request, response):
+        self.segmentation_model_name.set_parameter_value(Parameter.Type.STRING, request.name)
+        try:
+            self.load_image_processor()
+        except ValueError as e:
+            response.success = False
+            response.message = str(e)
+            return response
+        response.success = True
+        response.message = "Successfully switched to segmentation model {}".format(request.name)
+        return response
 
 def main(args=None):
     rclpy.init(args=args)

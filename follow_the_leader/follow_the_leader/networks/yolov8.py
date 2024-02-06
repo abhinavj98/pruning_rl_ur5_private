@@ -3,7 +3,7 @@ from ultralytics import YOLO
 import cv2
 import matplotlib.pyplot as plt
 import torch
-
+import os
 
 from enum import Enum
 class TreeLabel(Enum):
@@ -11,7 +11,7 @@ class TreeLabel(Enum):
     SIDE_BRANCH = 1
 class YoloInference:
     def __init__(self, input_size=(640, 448), output_size=(640, 448),
-                    model_path = '/home/abhinav/Desktop/weights/best.pt'):
+                    model_path = os.path.join(os.path.expanduser("~"), "follow-the-leader-deps", "weights", "best.pt")):
         self.input_size = input_size
         self.output_size = output_size
 
@@ -30,7 +30,7 @@ class YoloInference:
         """predicting image
         """
         #TODO: peprocess and post process mask size
-        result = self.model(source=image, retina_masks=True)[0]
+        result = self.model(source=image, retina_masks=True, verbose=False)[0]
         if result.masks is None:
             return np.zeros(image.shape[:2], dtype=np.uint8)
         masks = result.masks.data

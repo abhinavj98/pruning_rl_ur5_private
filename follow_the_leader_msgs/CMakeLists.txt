@@ -42,7 +42,12 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/StateTransition.msg"
   "msg/BlenderParams.msg"
   "msg/ControllerParams.msg"
+  "msg/OpticalFlowAndMask.msg"
+  "srv/ChangeSegmentationModel.srv"
   "srv/Query3DPoints.srv"
+  "srv/Jacobian.srv"
+  "srv/OpticalFlowAndMask.srv"
+
   DEPENDENCIES std_msgs geometry_msgs sensor_msgs # Add packages that above messages depend on, in this case geometry_msgs for Sphere.msg
 )
 

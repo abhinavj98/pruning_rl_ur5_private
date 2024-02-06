@@ -114,6 +114,23 @@ def generate_launch_description():
         condition=IfCondition(load_core),
     )
 
+    ftl_move_group_server_node = IncludeLaunchDescription(
+         AnyLaunchDescriptionSource(
+             os.path.join(
+                 get_package_share_directory("ftl_move_group_server"),
+                 "launch/ftl_server.launch.py",
+             )
+         ),
+         launch_arguments=[
+             ("ur_type", ur_type),
+             ("use_fake_hardware", use_sim),
+             ("launch_rviz", "false"),
+         ],
+    )
+
+
+
+
     # ==============
     # ROS2 BAG
     # ==============
@@ -142,10 +159,11 @@ def generate_launch_description():
             #launch_blender_arg,
             camera_params_arg,
             ur_launch,
-            #joy_node,
-            #io_node,
+            joy_node,
+            io_node,
             realsense_launch,
             core_launch,
+            ftl_move_group_server_node,
             #blender_node,
             # ros_bag_execute
         ]

@@ -50,6 +50,13 @@ def generate_launch_description():
         parameters=[core_params_file, camera_params_file],
     )
 
+    optical_flow_node = Node(
+        package="follow_the_leader",
+        executable="optical_flow",
+        output="screen",
+        # parameters=[core_params_file, camera_params_file],
+    )
+
     point_tracker_node = Node(
         package="follow_the_leader",
         executable="point_tracker",
@@ -78,15 +85,108 @@ def generate_launch_description():
         parameters=[core_params_file],
     )
 
+    goal_publisher_node = Node(
+        package="follow_the_leader",
+        executable="goal_publisher",
+        output="screen",
+        # parameters=[core_params_file],
+    )
+
+    # teleop_node = Node(
+    #     package='teleop_twist_keyboard',
+    #     executable="teleop_twist_keyboard",
+    #     output='screen',
+    #     prefix='xterm -e',
+    #
+    #
+    # )
+
+    transform_node = Node(
+        package="follow_the_leader",
+        executable="run_transform",
+        )
+    tf_node_mount = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        prefix = ['bash -c \'sleep 7; $0 $@\''],
+        arguments="-0.115 0.065 0.03 0 0 0 1 tool0 camera_mount_center".split(' '),
+        output = 'screen',
+        )
+
+    tf_node_mount_to_cam = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        prefix=['bash -c \'sleep 7; $0 $@\''],
+        arguments="0.028 0 0.0193 0 0 0 1 camera_mount_center camera_link".split(' '),
+        # Z is camera thickness (23mm) minus glass (3.7mm)
+    )
+
+
+    tf_node_c = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+
+        prefix=['bash -c \'sleep 7; $0 $@\''],
+        arguments="0. 0. 0. 0. 0. 0. 1. camera_link camera_color_optical_frame".split(' '),
+    )
+
+    tf_node_endpoint = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+
+        prefix=['bash -c \'sleep 7; $0 $@\''],
+        arguments="-0.0931 0. 0.128 0. 0. 0. 1. tool0 endpoint".split(' '),
+    )
+
+    tf_node_world_sim = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+
+        prefix=['bash -c \'sleep 7; $0 $@\''],
+        arguments="0.5 0 0.757 0. 0. 0. 1. world_sim world".split(' '),
+    )
+
+    tf_node_aruco = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        prefix=['bash -c \'sleep 7; $0 $@\''],
+        arguments="0. 0. 0. 1. 0. 0. 0. camera_color_optical_frame aruco_frame".split(' '),
+    )
+
+    optical_flow_srv = Node(
+        package="follow_the_leader",
+        executable="optical_flow_srv",
+        
+    )
+
+    controller_rl = Node(
+        package="follow_the_leader",
+        executable="controller_rl",
+        prefix=['bash -c \'sleep 7; $0 $@\'']
+    )
+
+#-0.07, -0.73, 0.59
     return LaunchDescription(
         [
             params_arg,
             camera_params_arg,
             state_manager_node,
-            image_processor_node,
+            # image_processor_node,
+            # optical_flow_node,
+            # goal_publisher_node,
             #point_tracker_node,
             #modeling_node,
             #controller_node,
             #servoing_node,
+            #teleop_node
+            tf_node_mount,
+            tf_node_mount_to_cam,
+            # tf_node_b,
+            tf_node_c,
+            tf_node_endpoint,
+            tf_node_world_sim,
+            optical_flow_srv,
+            # controller_rl
+
         ]
     )

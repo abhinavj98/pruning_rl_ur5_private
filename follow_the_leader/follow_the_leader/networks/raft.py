@@ -13,7 +13,6 @@ class RAFT:
         self.size = size
 
     def _preprocess(self, img1, img2):
-
         img1 = F.resize(img1, size=self.size, antialias=False)
         img2 = F.resize(img2, size=self.size, antialias=False)
         return self.transforms(img1, img2)
