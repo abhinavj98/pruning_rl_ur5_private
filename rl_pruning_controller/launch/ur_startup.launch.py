@@ -51,7 +51,7 @@ def generate_launch_description():
 
     ur_moveit_launch = IncludeLaunchDescription(
         AnyLaunchDescriptionSource(
-            os.path.join(get_package_share_directory("follow_the_leader"), "ur_moveit.launch.py")
+            os.path.join(get_package_share_directory("ur_moveit_config"), "launch/ur_moveit.launch.py")
         ),
         launch_arguments=[
             ("ur_type", ur_type),
@@ -69,12 +69,5 @@ def generate_launch_description():
             set_joint_controller,
             ur_base_launch,
             ur_moveit_launch,
-            # tf_node_world_sim,
-            # tf_node_endpoint,
-            #
-            # tf_node_mount,
-            # tf_node_mount_to_cam,
-            # tf_node_b,
-            # tf_node_c,
         ]
     )
