@@ -34,7 +34,8 @@ class ExperimentManagementNode(TFNode):
     def __init__(self):
         super().__init__("experiment_manager_node")
 
-        self.home_joints = [-np.pi / 2, -2.142835, 2.22800, -3.06571, -np.pi / 2, np.pi]
+        self.home_joints = (-np.pi / 2, -np.pi * 2 / 3, np.pi * 2 / 3, -np.pi, -np.pi / 2,
+                                  np.pi)
         #convert to float
         self.home_joints = [float(i) for i in self.home_joints]
         # self.folder = output_folder

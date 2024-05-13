@@ -130,20 +130,13 @@ def generate_launch_description():
         arguments="0. 0. 0. 0. 0. 0. 1. camera_link camera_color_optical_frame".split(' '),
     )
 
+    #TODO: Change this to the correct value
     tf_node_endpoint = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
 
         prefix=['bash -c \'sleep 7; $0 $@\''],
-        arguments="-0.0931 0. 0.128 0. 0. 0. 1. tool0 endpoint".split(' '),
-    )
-
-    tf_node_world_sim = Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-
-        prefix=['bash -c \'sleep 7; $0 $@\''],
-        arguments="0.5 0 0.757 0. 0. 0. 1. world_sim world".split(' '),
+        arguments="-0.0931 0. 0.15 0. 0. 0. 1. tool0 endpoint".split(' '),
     )
 
     tf_node_aruco = Node(
@@ -153,10 +146,12 @@ def generate_launch_description():
         arguments="0. 0. 0. 1. 0. 0. 0. camera_color_optical_frame aruco_frame".split(' '),
     )
 
-    optical_flow_srv = Node(
-        package="follow_the_leader",
-        executable="optical_flow_srv",
-        
+    tf_node_world_sim = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+
+        prefix=['bash -c \'sleep 7; $0 $@\''],
+        arguments="0. 0. 0. 0. 0. 0.707 0.707. world world_sim".split(' '),
     )
 
     controller_rl = Node(
@@ -184,9 +179,8 @@ def generate_launch_description():
             # tf_node_b,
             tf_node_c,
             tf_node_endpoint,
-            tf_node_world_sim,
-            optical_flow_srv,
             # controller_rl
+            tf_node_world_sim,
 
         ]
     )

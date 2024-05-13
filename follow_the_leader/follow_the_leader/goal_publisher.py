@@ -20,9 +20,9 @@ class GoalPublisher(Node):
         goal_msg = Point()
         #TODO: Set goal using service
         # Set the goal coordinates (x, y, z) here0-0.021, -0.798, 0.619
-        goal_msg.x = .14#0.140#-0.176#
-        goal_msg.y = -0.776#-0.779#
-        goal_msg.z = 0.67 #0.680 #
+        goal_msg.x = -.354#255
+        goal_msg.y = -.667#-0.707#-0.779#
+        goal_msg.z = 0.575 #0.680 #
         # -0.006, -0.592, 0.601
         self.publisher_.publish(goal_msg)
 
