@@ -151,7 +151,7 @@ def generate_launch_description():
         executable="static_transform_publisher",
 
         prefix=['bash -c \'sleep 7; $0 $@\''],
-        arguments="0. 0. 0. 0. 0. 0.707 0.707. world world_sim".split(' '),
+        arguments="0. 0. 0. 0. 0. -0.707 0.707 fake_base world".split(' '),
     )
 
     controller_rl = Node(

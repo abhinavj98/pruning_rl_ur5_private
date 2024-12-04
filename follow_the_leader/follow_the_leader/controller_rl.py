@@ -27,7 +27,7 @@ import cv2
 from sensor_msgs.msg import Image
 from skimage.draw import disk
 # from follow_the_leader.utils.run_experiments import move_to
-MODEL_WEIGHTS_PATH = os.path.join(os.path.expanduser("~"), "weights", "rl_controller_weights", "latest_7/" )#"/home/abhinav/Desktop/weights/rl_controller_weights/"
+MODEL_WEIGHTS_PATH = os.path.join(os.path.expanduser("~"), "weights", "rl_controller_weights", "final_no_eval_30_2/" )#"/home/abhinav/Desktop/weights/rl_controller_weights/"
 # PRUNING_SB3_PATH = "
 Joint = namedtuple("Joint", ["angle", "velocity"])
 
@@ -106,7 +106,7 @@ class RLController(TFNode):
         self.marker_pub = self.create_publisher(Marker, "/vel_marker", 1)
         self.endpoint_marker = self.create_publisher(Marker, "/endpoint_marker", 1)
         self.reset_srv = self.create_service(Trigger, 'reset_controller_srv', self.reset_srv, callback_group=self.cb)
-        self.set_vel_timer = self.create_timer(1., self.set_vel, callback_group=self.cb)
+        self.set_vel_timer = self.create_timer(2., self.set_vel, callback_group=self.cb)
         self.endpoint_timer = self.create_timer(1./2, self.publish_endpoint, callback_group=self.cb)
         self.pub_vel_timer = self.create_timer(1/100., self.publish_vel, callback_group=self.cb)
         self.jacobian_client = self.sub_node.create_client(Jacobian, "/get_jacobian", callback_group=self.cb)
@@ -115,8 +115,9 @@ class RLController(TFNode):
             self.get_logger().info('Jacobian service not available, waiting again...')
         # while not self.of_and_mask_client.wait_for_service(timeout_sec=1.0):
         #     self.get_logger().info('OF service not available, waiting again...')
+        load_timestep = 7296000
 
-        self.init_model(MODEL_WEIGHTS_PATH + "best_model.zip", MODEL_WEIGHTS_PATH + "best_mean_std.pkl")
+        self.init_model(MODEL_WEIGHTS_PATH + "current_model_{}.zip".format(load_timestep), MODEL_WEIGHTS_PATH + "current_mean_std_{}.pkl".format(load_timestep))
         # self.reset()
 
     def image_callback(self, msg: Image):        
@@ -147,11 +148,11 @@ class RLController(TFNode):
     
     def reset(self):
         #get ee pose wrt base_link
-        tf_ee_base = self.lookup_transform("world_sim", "endpoint")
+        tf_ee_base = self.lookup_transform("fake_base", "endpoint")
         self.lstm_states = None
         #TODO: End effector index during training should be the same here
         self.pos_ee_base_init = np.array([tf_ee_base.transform.translation.x, tf_ee_base.transform.translation.y, tf_ee_base.transform.translation.z])
-        
+        print("Resetting controller", self.pos_ee_base_init)
         self.goal_sim = np.array([0.0, 0.0, 0.0])
         self.observation = dict()
 
@@ -193,10 +194,10 @@ class RLController(TFNode):
         # tf_ee_base = self.lookup_transform("base_link", "endpoint", as_matrix=True)
         # tf_ee_world = tf_base_world@tf_ee_base
         # tf_base_sim_inv = self.lookup_transform('base_link', 'world_sim', as_matrix=True)
-        tf_ee_sim = self.lookup_transform('world_sim', 'endpoint', as_matrix=True)
+        tf_ee_sim = self.lookup_transform('fake_base', 'endpoint', as_matrix=True)
         # print(tf_ee_sim)
         #Target Source
-        print("got tf")
+        print("got tf", tf_ee_sim)
         # achieved_vel, achieved_ang_vel = self.lookup_twist("base_link", "tool0")
         # The order of keys is important
 
@@ -205,9 +206,10 @@ class RLController(TFNode):
         self.observation['achieved_goal'] = pos_ee_base - self.pos_ee_base_init
         self.observation['achieved_or'] = or_ee_base[:3, :2].reshape(6, )
         #Transform goal_sim wrt world_sim instead of world
-        tf_world_world_sim = self.lookup_transform('world_sim', 'world', as_matrix=True)
+        tf_world_world_sim = self.lookup_transform('fake_base', 'base_link', as_matrix=True)
         goal_fake_base = self.mul_homog(tf_world_world_sim, self.goal_sim)
         self.observation['desired_goal'] = goal_fake_base - self.pos_ee_base_init
+        print(self.observation['achieved_goal'], self.observation['desired_goal'], self.observation['achieved_or'])
         joint_angles = self.joint_states_ordered.get_joint_angles_ordered()
         if joint_angles[0] is None:
             return None
@@ -215,7 +217,6 @@ class RLController(TFNode):
         print("getting ee vel")
 
         ee_vel = self.get_ee_vel()
-        print(ee_vel)
         if ee_vel is None:
             return None
         ee_vel = self.action_world_to_sim(ee_vel.reshape(6, ))
@@ -282,8 +283,8 @@ class RLController(TFNode):
         device = "cuda" if th.cuda.is_available() else "cpu"
         assert load_path_mean_std
         assert load_path_model
-
-        self.model = RecurrentPPOAE.load(load_path_model, print_system_info=True)
+        custom_objects = {"n_envs": 1}
+        self.model = RecurrentPPOAE.load(load_path_model, print_system_info=True, custom_objects=custom_objects)
         self.model.policy.load_running_mean_std_from_file(load_path_mean_std)
         self.model.policy.to(device)
         print(device)
@@ -355,7 +356,7 @@ class RLController(TFNode):
         # print(self.action_sim, self.goal_sim, tf_ee_sim[:3,3])#, self, self.observation['desired_goal'])
 
     def action_sim_to_world(self, action_sim):
-        scale = 5
+        scale = 2.5
         action = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         action[0] = action_sim[0]*scale
         action[1] = action_sim[1]*scale
@@ -366,7 +367,7 @@ class RLController(TFNode):
         return action
 
     def action_world_to_sim(self, action_world):
-        scale = 5
+        scale = 2.5
         action = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         action[0] = action_world[0]/scale
         action[1] = action_world[1]/scale
